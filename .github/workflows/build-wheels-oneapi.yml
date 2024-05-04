@@ -57,19 +57,25 @@ jobs:
         id: set-matrix
         run: |
           $matrix = @{
-              'os' = @("ubuntu-22.04") <#, "windows-latest" #>
+              'os' = "ubuntu-22.04", "windows-latest"
               'pyver' = @("3.10") <#, "3.11" #>
               'oneapi' = <#"2023.0", "2023.1", "2023.2", "2024.0",#> @("2024.1")
               'releasetag' = @("basic") <#, "AVX", "wheels", "AVX512" #>
+              'exclude' = @(
+                @{'os' = 'windows-latest';'oneapi' = '2024.0'},
+                @{'os' = 'windows-latest';'oneapi' = '2023.2'},
+                @{'os' = 'windows-latest';'oneapi' = '2023.1'},
+                @{'os' = 'windows-latest';'oneapi' = '2023.0'},
+              )
           }
           
           if ($env:CONFIGIN -ne 'Default') {$env:CONFIGIN.split(';').foreach({$matrix[$_.split(':')[0]] = $_.split(':')[1].split(',')})}
           
-          if ($env:EXCLUDEIN -ne 'None') {
-              $exclusions = @()
+          if ($env:EXCLUDEIN -notin ('None','Default')) {
+              $exclusions = $matrix['exclude']
               $exclusions += $env:EXCLUDEIN.split(';').replace(':','=').replace(',',"`n") | ConvertFrom-StringData
               $matrix['exclude'] = $exclusions
-          }
+          } elseif ($env:EXCLUDEIN -eq 'None') {$matrix.remove('exclude')}
           
           $matrixOut = ConvertTo-Json $matrix -Compress
           Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
@@ -114,8 +120,8 @@ jobs:
       - name: Install Windows OneAPI Base Toolkit
         if: runner.os == 'Windows'
         run: |
-          echo "Not implemented."
-          exit 1
+          Invoke-RestMethod "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/7dff44ba-e3af-4448-841c-0d616c8da6e7/w_BaseKit_p_2024.1.0.595_offline.exe" -OutFile "OneAPI_BaseKit.exe"
+          Start-Process "OneAPI_BaseKit.exe" "-s" "-a" "--silent" "--eula" "accept" "-p=NEED_VS2019_INTEGRATION=0"
 
       - name: Install Dependencies
         run: |
@@ -125,7 +131,13 @@ jobs:
         run: |
           $packageVersion = [version]$env:PCKGVER.TrimStart('v')
           $env:VERBOSE = '1'
-          $env:CMAKE_ARGS = '-DLLAMA_SYCL=on -DLLAMA_SYCL_F16=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx'
+          $env:CMAKE_ARGS = "-DLLAMA_SYCL=on -DLLAMA_SYCL_F16=ON"
+          
+          if ($IsLinux) {
+            $env:CMAKE_ARGS += "-DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx"
+          } else {
+            $env:CMAKE_ARGS += "-DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icx"
+          }
           if ($env:AVXVER -eq 'AVX') {$env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DLLAMA_AVX2=off -DLLAMA_FMA=off -DLLAMA_F16C=off'}
           if ($env:AVXVER -eq 'AVX512') {$env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DLLAMA_AVX512=on'}
           if ($env:AVXVER -eq 'basic') {$env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DLLAMA_AVX=off -DLLAMA_AVX2=off -DLLAMA_FMA=off -DLLAMA_F16C=off'}
@@ -153,8 +165,9 @@ jobs:
       - name: Build Wheel for Windows
         if: runner.os == 'Windows'
         run: |
-          echo "Not implemented."
-          exit 1
+          echo $CMAKE_ARGS
+          & "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" "intel64" "--force"
+          python -m build --wheel
           
       - name: Upload files to a GitHub release
         id: upload-release
