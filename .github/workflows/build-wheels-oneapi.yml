@@ -1,0 +1,176 @@
+name: Build Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag of llama-cpp-python to build: v0.2.35'
+        default: 'v0.2.35'
+        required: true
+        type: string
+      cpu:
+        description: 'Build CPU-only wheels as well? 0/1 Does not use config or exclude.'
+        default: '1'
+        required: false
+        type: string
+      config:
+        description: 'Override configurations to build: key1:item1-1,item1-2;key2:item2-1,item2-2'
+        default: 'Default'
+        required: false
+        type: string
+      exclude:
+        description: 'Exclude build configurations: key1-1:item1-1,key1-2:item1-2;key2-1:item2-1,key2-2:item2-2'
+        default: 'None'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version tag of llama-cpp-python to build: v0.2.35'
+        default: 'v0.2.35'
+        required: true
+        type: string
+      cpu:
+        description: 'Build CPU-only wheels as well? 0/1 Does not use config or exclude.'
+        default: '1'
+        required: false
+        type: string
+      config:
+        description: 'Configurations to build: key1:item1-1,item1-2;key2:item2-1,item2-2'
+        default: 'Default'
+        required: false
+        type: string
+      exclude:
+        description: 'Exclude build configurations: key1-1:item1-1,key1-2:item1-2;key2-1:item2-1,key2-2:item2-2'
+        default: 'None'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  define_matrix:
+    name: Define Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CONFIGIN: ${{ inputs.config }}
+      EXCLUDEIN: ${{ inputs.exclude }}
+        
+    steps:
+      - name: Define Job Output
+        id: set-matrix
+        run: |
+          $matrix = @{
+              'os' = @("ubuntu-20.04") <#, "windows-latest" #>
+              'pyver' = @("3.10") <#, "3.11" #>
+              'oneapi' = <#"2023.0", "2023.1", "2023.2", "2024.0",#> @("2024.1")
+              'releasetag' = @("basic") <#, "AVX", "wheels", "AVX512" #>
+          }
+          
+          if ($env:CONFIGIN -ne 'Default') {$env:CONFIGIN.split(';').foreach({$matrix[$_.split(':')[0]] = $_.split(':')[1].split(',')})}
+          
+          if ($env:EXCLUDEIN -ne 'None') {
+              $exclusions = @()
+              $exclusions += $env:EXCLUDEIN.split(';').replace(':','=').replace(',',"`n") | ConvertFrom-StringData
+              $matrix['exclude'] = $exclusions
+          }
+          
+          $matrixOut = ConvertTo-Json $matrix -Compress
+          Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
+          
+  build_wheels:
+    name: Build Wheel ${{ matrix.os }} ${{ matrix.pyver }} ${{ matrix.oneapi }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
+    needs: define_matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      ONEAPIVER: ${{ matrix.oneapi }}
+      AVXVER: ${{ matrix.releasetag }}
+      PCKGVER: ${{ inputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: 'abetlen/llama-cpp-python'
+          ref: ${{ inputs.version }}
+          submodules: 'recursive'
+          
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.pyver }}
+
+      - name: Install Linux OneAPI Base Toolkit
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gpg-agent wget
+          wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+
+          sudo apt-get update
+          sudo apt-get install -y "intel-basekit-$env:ONEAPIVER"
+
+      - name: Install Windows OneAPI Base Toolkit
+        if: runner.os == 'Windows'
+        run: |
+          echo "Not implemented."
+          exit 1
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install build wheel
+          
+      - name: Build Wheel
+        run: |
+          $packageVersion = [version]$env:PCKGVER.TrimStart('v')
+          $env:VERBOSE = '1'
+          $env:CMAKE_ARGS = '-DLLAMA_SYCL=on -DLLAMA_SYCL_F16=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx'
+          if ($env:AVXVER -eq 'AVX') {$env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DLLAMA_AVX2=off -DLLAMA_FMA=off -DLLAMA_F16C=off'}
+          if ($env:AVXVER -eq 'AVX512') {$env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DLLAMA_AVX512=on'}
+          if ($env:AVXVER -eq 'basic') {$env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DLLAMA_AVX=off -DLLAMA_AVX2=off -DLLAMA_FMA=off -DLLAMA_F16C=off'}
+          $buildtag = "+oneapi$env:ONEAPIVER"
+          
+          $initpath = Join-Path '.' 'llama_cpp' '__init__.py' -resolve
+          $initcontent = Get-Content $initpath -raw
+          $regexstr = '(?s)(?<=__version__ \= ")\d+(?:\.\d+)*(?=")'
+          $regexmatch = [Regex]::Matches($initcontent,$regexstr)
+          if (!($regexmatch[0].Success)) {throw '__init__.py parsing failed'}
+          $newinit = $regexmatch[0].Result(('$`' + '$&' + $buildtag + '$'''))
+          New-Item $initpath -itemType File -value $newinit -force
+          python -m build --wheel
+          
+      - name: Upload files to a GitHub release
+        id: upload-release
+        uses: svenstaro/upload-release-action@2.7.0
+        continue-on-error: true
+        with:
+          file: ./dist/*.whl
+          tag: ${{ matrix.releasetag }}
+          file_glob: true
+          make_latest: false
+          overwrite: true
+        
+      - uses: actions/upload-artifact@v3
+        if: steps.upload-release.outcome == 'failure'
+        with:
+          name: ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
+          path: ./dist/*.whl
+          
+  build_cpu:
+    name: Build CPU-only Wheels
+    needs: build_wheels
+    if: inputs.cpu == '1'
+    uses: ./.github/workflows/build-wheels-cpu.yml
+    with:
+      version: ${{ inputs.version }}
