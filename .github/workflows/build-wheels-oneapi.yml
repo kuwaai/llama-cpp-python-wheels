@@ -65,7 +65,7 @@ jobs:
                 @{'os' = 'windows-latest';'oneapi' = '2024.0'},
                 @{'os' = 'windows-latest';'oneapi' = '2023.2'},
                 @{'os' = 'windows-latest';'oneapi' = '2023.1'},
-                @{'os' = 'windows-latest';'oneapi' = '2023.0'},
+                @{'os' = 'windows-latest';'oneapi' = '2023.0'}
               )
           }
           
