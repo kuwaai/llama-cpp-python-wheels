@@ -67,7 +67,7 @@ jobs:
         id: set-matrix
         run: |
           $matrix = @{
-              'os' = @("ubuntu-20.04") <#, "windows-latest" #>
+              'os' = @("ubuntu-22.04") <#, "windows-latest" #>
               'pyver' = @("3.10") <#, "3.11" #>
               'oneapi' = <#"2023.0", "2023.1", "2023.2", "2024.0",#> @("2024.1")
               'releasetag' = @("basic") <#, "AVX", "wheels", "AVX512" #>
@@ -120,6 +120,7 @@ jobs:
 
           sudo apt-get update
           sudo apt-get install -y intel-basekit-${ONEAPIVER}
+          source /opt/intel/oneapi/setvars.sh
 
       - name: Install Windows OneAPI Base Toolkit
         if: runner.os == 'Windows'
@@ -156,7 +157,7 @@ jobs:
         continue-on-error: true
         with:
           file: ./dist/*.whl
-          tag: ${{ matrix.releasetag }}
+          tag: oneapi
           file_glob: true
           make_latest: false
           overwrite: true
