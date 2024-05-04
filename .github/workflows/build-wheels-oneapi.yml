@@ -119,7 +119,8 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
 
           sudo apt-get update
-          sudo apt-get install -y "intel-basekit-$env:ONEAPIVER"
+          echo "intel-basekit-${env:ONEAPIVER}"
+          sudo apt-get install -y "intel-basekit-${env:ONEAPIVER}"
 
       - name: Install Windows OneAPI Base Toolkit
         if: runner.os == 'Windows'
