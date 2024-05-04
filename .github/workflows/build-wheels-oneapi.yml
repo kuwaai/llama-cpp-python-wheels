@@ -1,4 +1,4 @@
-name: Build Wheels
+name: Build OneAPI Wheels
 
 on:
   workflow_dispatch:
@@ -119,8 +119,7 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
 
           sudo apt-get update
-          echo "intel-basekit-${env:ONEAPIVER}"
-          sudo apt-get install -y "intel-basekit-${env:ONEAPIVER}"
+          sudo apt-get install -y intel-basekit-${ONEAPIVER}
 
       - name: Install Windows OneAPI Base Toolkit
         if: runner.os == 'Windows'
