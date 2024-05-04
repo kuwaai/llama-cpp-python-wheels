@@ -149,13 +149,14 @@ jobs:
           $newinit = $regexmatch[0].Result(('$`' + '$&' + $buildtag + '$'''))
           New-Item $initpath -itemType File -value $newinit -force
           
-          echo "CMAKE_ARGS=$env:CMAKE_ARGS" >> "$GITHUB_ENV"
-          echo "VERBOSE=$env:VERBOSE" >> "$GITHUB_ENV"
+          echo "CMAKE_ARGS=$env:CMAKE_ARGS" >> "$env:GITHUB_ENV"
+          echo "VERBOSE=$env:VERBOSE" >> "$env:GITHUB_ENV"
 
       - name: Build Wheel for Linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          echo $CMAKE_ARGS
           source /opt/intel/oneapi/setvars.sh
           python -m build --wheel
       
