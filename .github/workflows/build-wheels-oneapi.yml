@@ -152,8 +152,6 @@ jobs:
           echo "CMAKE_ARGS=$env:CMAKE_ARGS" >> "$GITHUB_ENV"
           echo "VERBOSE=$env:VERBOSE" >> "$GITHUB_ENV"
 
-          python -m build --wheel
-      
       - name: Build Wheel for Linux
         if: runner.os == 'Linux'
         shell: bash
