@@ -178,7 +178,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           echo $env:CMAKE_ARGS
-          Install-Module Pscx -Scope CurrentUser -Force
+          Install-Module Pscx -Scope CurrentUser -Force -AllowClobber
           Invoke-BatchFile "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" "intel64 --force"
           python -m build --wheel
           
