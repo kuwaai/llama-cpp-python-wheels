@@ -117,23 +117,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y intel-basekit-${ONEAPIVER}
       
-      - name: Windows OneAPI Base Toolkit Cache
+      - name: Windows OneAPI Base Toolkit and w64devkit Cache
         id: oneapi-base-toolkit-cache
         if: runner.os == 'Windows'
         uses: actions/cache@v3.3.2
         with:
-          path: ./OneAPI_BaseKit.exe
+          path: |
+            ./OneAPI_BaseKit.exe
+            ./w64devkit.zip
           key: oneapi-base-toolkit-${{ matrix.oneapi }}
 
-      - name: Fetch Windows OneAPI Base Toolkit
+      - name: Fetch Windows OneAPI Base Toolkit and w64devkit
         if: runner.os == 'Windows' && steps.oneapi-base-toolkit-cache.outputs.cache-hit != 'true'
         run: |
           Invoke-RestMethod "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/7dff44ba-e3af-4448-841c-0d616c8da6e7/w_BaseKit_p_2024.1.0.595_offline.exe" -OutFile "OneAPI_BaseKit.exe"
+          Invoke-RestMethod "https://github.com/skeeto/w64devkit/releases/download/v1.22.0/w64devkit-1.22.0.zip" -OutFile 'w64devkit.zip'
       
-      - name: Install Windows OneAPI Base Toolkit
+      - name: Install Windows OneAPI Base Toolkit and w64devkit
         if: runner.os == 'Windows'
         run: |
           Start-Process "OneAPI_BaseKit.exe" -ArgumentList "-s -a --silent --eula accept -p=NEED_VS2019_INTEGRATION=0" -NoNewWindow -Wait
+          Expand-Archive ./w64devkit.zip -DestinationPath C:\
+          echo "C:\w64devkit\bin\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install Dependencies
         run: |
@@ -166,21 +171,22 @@ jobs:
           echo "CMAKE_ARGS=$env:CMAKE_ARGS" >> "$env:GITHUB_ENV"
           echo "VERBOSE=$env:VERBOSE" >> "$env:GITHUB_ENV"
 
+          echo $CMAKE_ARGS
+
       - name: Build Wheel for Linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          echo $CMAKE_ARGS
           source /opt/intel/oneapi/setvars.sh
           python -m build --wheel
       
       - name: Build Wheel for Windows
         if: runner.os == 'Windows'
         run: |
-          echo $env:CMAKE_ARGS
-          $env:CMAKE_GENERATOR = "MinGW Makefiles"
           Install-Module Pscx -Scope CurrentUser -Force -AllowClobber
           Invoke-BatchFile "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" "intel64 --force"
+          
+          $env:CMAKE_GENERATOR = "MinGW Makefiles"
           python -m build --wheel
           
       - name: Upload files to a GitHub release
