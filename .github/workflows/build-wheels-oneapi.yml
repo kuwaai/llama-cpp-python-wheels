@@ -148,7 +148,8 @@ jobs:
         run: |
           $packageVersion = [version]$env:PCKGVER.TrimStart('v')
           $env:VERBOSE = '1'
-          $env:CMAKE_ARGS = "-DLLAMA_SYCL=on -DLLAMA_SYCL_F16=ON"
+          $env:CMAKE_ARGS = "-DLLAMA_SYCL=on "
+          # $env:CMAKE_ARGS += "-DLLAMA_SYCL_F16=ON "
           
           if ($IsLinux) {
             $env:CMAKE_ARGS += "-DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx"
