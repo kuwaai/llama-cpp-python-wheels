@@ -177,8 +177,8 @@ jobs:
       - name: Build Wheel for Windows
         if: runner.os == 'Windows'
         run: |
-          echo $CMAKE_ARGS
-          Install-Module Pscx -Scope CurrentUser
+          echo $env:CMAKE_ARGS
+          Install-Module Pscx -Scope CurrentUser -Force
           Invoke-BatchFile "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" "intel64 --force"
           python -m build --wheel
           
