@@ -166,7 +166,8 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           echo $CMAKE_ARGS
-          & "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" "intel64" "--force"
+          Install-Module Pscx -Scope CurrentUser
+          Invoke-BatchFile "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" "intel64 --force"
           python -m build --wheel
           
       - name: Upload files to a GitHub release
