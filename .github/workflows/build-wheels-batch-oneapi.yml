@@ -35,6 +35,7 @@ jobs:
           
   run_workflows:
     name: Build ${{ matrix.version }} OneAPI Wheels
+    if: ${{ matrix.version != '' }}
     needs: define_matrix
     strategy:
       max-parallel: 1

@@ -58,8 +58,8 @@ jobs:
         run: |
           $matrix = @{
               'os' = "ubuntu-22.04", "windows-latest"
-              'pyver' = @("3.10") <#, "3.11" #>
-              'oneapi' = <#"2023.0", "2023.1", "2023.2", "2024.0",#> @("2024.1")
+              'pyver' = "3.10", "3.11"
+              'oneapi' = "2023.0", "2023.1", "2023.2", "2024.0", "2024.1"
               'releasetag' = @("basic") <#, "AVX", "wheels", "AVX512" #>
               'exclude' = @(
                 @{'os' = 'windows-latest';'oneapi' = '2024.0'},
