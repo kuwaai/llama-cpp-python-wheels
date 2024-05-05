@@ -32,7 +32,7 @@ on:
         type: string
       exclude:
         description: 'Exclude build configurations: key1-1:item1-1,key1-2:item1-2;key2-1:item2-1,key2-2:item2-2'
-        default: 'None'
+        default: 'Default'
         required: false
         type: string
 
@@ -62,10 +62,10 @@ jobs:
               'oneapi' = "2023.0", "2023.1", "2023.2", "2024.0", "2024.1"
               'releasetag' = @("basic") <#, "AVX", "wheels", "AVX512" #>
               'exclude' = @(
-                @{'os' = 'windows-latest';'oneapi' = '2024.0'},
-                @{'os' = 'windows-latest';'oneapi' = '2023.2'},
-                @{'os' = 'windows-latest';'oneapi' = '2023.1'},
-                @{'os' = 'windows-latest';'oneapi' = '2023.0'}
+                @{'os' = 'windows-latest'; 'oneapi' = '2024.0'},
+                @{'os' = 'windows-latest'; 'oneapi' = '2023.2'},
+                @{'os' = 'windows-latest'; 'oneapi' = '2023.1'},
+                @{'os' = 'windows-latest'; 'oneapi' = '2023.0'}
               )
           }
           
@@ -81,7 +81,7 @@ jobs:
           Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
           
   build_wheels:
-    name: Build Wheel ${{ matrix.os }} ${{ matrix.pyver }} ${{ matrix.oneapi }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
+    name: Build Wheel ${{ matrix.os }} Python${{ matrix.pyver }} OneAPI${{ matrix.oneapi }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
     needs: define_matrix
     runs-on: ${{ matrix.os }}
     strategy:
