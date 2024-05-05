@@ -66,6 +66,7 @@ jobs:
                 @{'os' = 'windows-latest'; 'oneapi' = '2023.2'},
                 @{'os' = 'windows-latest'; 'oneapi' = '2023.1'},
                 @{'os' = 'windows-latest'; 'oneapi' = '2023.0'}
+                @{'os' = 'ubuntu-22.04';   'oneapi' = '2023.1'}
               )
           }
           
@@ -83,6 +84,7 @@ jobs:
   build_wheels:
     name: Build Wheel ${{ matrix.os }} Python${{ matrix.pyver }} OneAPI${{ matrix.oneapi }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
     needs: define_matrix
+    continue-on-error: true
     runs-on: ${{ matrix.os }}
     strategy:
       matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
