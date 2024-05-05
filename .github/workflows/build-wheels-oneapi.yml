@@ -116,11 +116,23 @@ jobs:
 
           sudo apt-get update
           sudo apt-get install -y intel-basekit-${ONEAPIVER}
+      
+      - name: Windows OneAPI Base Toolkit Cache
+        id: oneapi-base-toolkit-cache
+        if: runner.os == 'Windows'
+        uses: actions/cache@v3.3.2
+        with:
+          path: ./OneAPI_BaseKit.exe
+          key: oneapi-base-toolkit-${{ matrix.oneapi }}
 
+      - name: Fetch Windows OneAPI Base Toolkit
+        if: runner.os == 'Windows' && steps.oneapi-base-toolkit-cache.outputs.cache-hit != 'true'
+        run: |
+          Invoke-RestMethod "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/7dff44ba-e3af-4448-841c-0d616c8da6e7/w_BaseKit_p_2024.1.0.595_offline.exe" -OutFile "OneAPI_BaseKit.exe"
+      
       - name: Install Windows OneAPI Base Toolkit
         if: runner.os == 'Windows'
         run: |
-          Invoke-RestMethod "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/7dff44ba-e3af-4448-841c-0d616c8da6e7/w_BaseKit_p_2024.1.0.595_offline.exe" -OutFile "OneAPI_BaseKit.exe"
           Start-Process "OneAPI_BaseKit.exe" -ArgumentList "-s -a --silent --eula accept -p=NEED_VS2019_INTEGRATION=0" -NoNewWindow -Wait
 
       - name: Install Dependencies
