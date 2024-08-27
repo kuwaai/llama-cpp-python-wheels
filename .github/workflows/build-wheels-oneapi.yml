@@ -62,7 +62,7 @@ jobs:
               'oneapi' = "2024.0", "2024.1" # 2024.0 is the minimal working version
               'releasetag' = @("basic") <#, "AVX", "wheels", "AVX512" #>
               'exclude' = @(
-                @{'os' = 'windows-latest'; 'oneapi' = '2024.0'},
+                @{'os' = 'windows-latest'; 'oneapi' = '2024.0'}
               )
           }
           
