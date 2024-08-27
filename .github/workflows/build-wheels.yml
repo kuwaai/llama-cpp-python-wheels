@@ -99,7 +99,7 @@ jobs:
       PCKGVER: ${{ inputs.version }}
 
     steps:
-       - name: Add MSBuild to PATH
+      - name: Add MSBuild to PATH
         if: runner.os == 'Windows'
         uses: microsoft/setup-msbuild@v2
         with:
