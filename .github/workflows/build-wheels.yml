@@ -99,18 +99,25 @@ jobs:
       PCKGVER: ${{ inputs.version }}
 
     steps:
+       - name: Add MSBuild to PATH
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '[16.11,16.12)'
+
       - uses: actions/checkout@v4
         with:
           repository: 'abetlen/llama-cpp-python'
           ref: ${{ inputs.version }}
-          submodules: 'recursive'
-          
-      - uses: actions/setup-python@v4
+          submodules: "recursive"
+
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyver }}
-        
+          cache: 'pip'
+
       - name: Setup Mamba
-        uses: conda-incubator/setup-miniconda@v2.2.0
+        uses: conda-incubator/setup-miniconda@v3.0.4
         with:
           activate-environment: "build"
           python-version: ${{ matrix.pyver }}
@@ -119,33 +126,33 @@ jobs:
           use-mamba: true
           add-pip-as-python-dependency: true
           auto-activate-base: false
-          
+
       - name: VS Integration Cache
         id: vs-integration-cache
         if: runner.os == 'Windows'
-        uses: actions/cache@v3.3.2
+        uses: actions/cache@v4.0.2
         with:
           path: ./MSBuildExtensions
           key: cuda-${{ matrix.cuda }}-vs-integration
-          
+
       - name: Get Visual Studio Integration
         if: runner.os == 'Windows' && steps.vs-integration-cache.outputs.cache-hit != 'true'
         run: |
-          $x = $env:CUDAVER
+          if ($env:CUDAVER -eq '12.1.1') {$x = '12.1.0'} else {$x = $env:CUDAVER}
           $links = (Invoke-RestMethod 'https://raw.githubusercontent.com/Jimver/cuda-toolkit/master/src/links/windows-links.ts').Trim().split().where({$_ -ne ''})
           for ($i=$q=0;$i -lt $links.count -and $q -lt 2;$i++) {if ($links[$i] -eq "'$x',") {$q++}}
           Invoke-RestMethod $links[$i].Trim("'") -OutFile 'cudainstaller.zip'
           & 'C:\Program Files\7-Zip\7z.exe' e cudainstaller.zip -oMSBuildExtensions -r *\MSBuildExtensions\* > $null
           Remove-Item 'cudainstaller.zip'
-          
+
       - name: Install Visual Studio Integration
         if: runner.os == 'Windows'
         run: |
           $y = (gi '.\MSBuildExtensions').fullname + '\*'
-          (gi 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VC\*\BuildCustomizations').fullname.foreach({cp $y $_})
+          (gi 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Microsoft\VC\*\BuildCustomizations').fullname.foreach({cp $y $_})
           $cupath = 'CUDA_PATH_V' + $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','_')
           echo "$cupath=$env:CONDA_PREFIX" >> $env:GITHUB_ENV
-          
+
       - name: Install Dependencies
         run: |
           $cudaVersion = $env:CUDAVER
