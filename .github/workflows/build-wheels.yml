@@ -89,6 +89,7 @@ jobs:
     needs: define_matrix
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
     defaults:
       run:
